@@ -62,155 +62,167 @@ void setup() {
 void loop() {
   
   /*Funcionalidad para DHT22*/  
-  // Wait a few seconds between measurements.
-  delay(2000);
+  // Esperamos un tiempo para tomar las medidas.
+  delay(5000);
 
-  // Reading temperature or humidity takes about 250 milliseconds!
-  // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+  // La lectura de la temperatura y humedad toma alrededor de 250 milisegundos.
+  // Las lecturas del sensor también pueden ser de hasta 2 segundos.
+  // Leo humedad
   float h = dht.readHumidity();
-  // Read temperature as Celsius
+  // Leo temperatura en grados Celsius
   float t = dht.readTemperature();
-  // Read temperature as Fahrenheit
+  // Leo temperatura en grados Fahrenheit
   float f = dht.readTemperature(true);
   
-  // Check if any reads failed and exit early (to try again).
+  // Chequeo si alguna lectura fallo y salgo del loop para intentar nuevamente.
   if (isnan(h) || isnan(t) || isnan(f)) {
-    Serial.println("Failed to read from DHT sensor!");
+    Serial.println("Falla al leer desde Sensor DHT22!");
     return;
   }
 
-  // Compute heat index
-  // Must send in temp in Fahrenheit!
-  float hi = dht.computeHeatIndex(f, h);
+  // Calculo el indice de calor, parametro para expresar la sensación térmica
+  // Utilizamos temperatura en grados Celsius
+  float hi = dht.computeHeatIndex(t, h);
 
-  Serial.print("Humidity: "); 
+  Serial.print("Humedad: ");
   Serial.print(h);
   Serial.print(" %\t");
-  Serial.print("Temperature: "); 
+  Serial.print("Temperatura: "); 
   Serial.print(t);
-  Serial.print(" *C ");
+  Serial.print(" °C ");
   Serial.print(f);
-  Serial.print(" *F\t");
-  Serial.print("Heat index: ");
+  Serial.print(" °F\t");
+  Serial.print("Indice de Calor: ");
   Serial.print(hi);
-  Serial.println(" *F");
+  Serial.println(" °C");
+
+  //TODO: Definir rango de valores limiteas para manejar activadores
+  if(t>30){
+    //Encender ventilación y apagar LED  
+  }else{
+    //Apagar ventilación y prender LED para calentar ambiente.  
+  }
+
+  //TODO: Definir rango de valores limites para manejar activadores
+  if(h>50){
+    //Encendemos ventilación y apagamos LED
+  }else{
+    //Apagamos ventilación
+  }  
   /*Fin funcionalidad DHT22*/
 
   /*Funcionalidad para BMP180*/
   char status;
   double T,P,p0,a;
 
-  // Loop here getting pressure readings every 10 seconds.
-
-  // If you want sea-level-compensated pressure, as used in weather reports,
-  // you will need to know the altitude at which your measurements are taken.
-  // We're using a constant called ALTITUDE in this sketch:
+  // Si desea una presión compensada por el nivel del mar, tal como se utiliza en los informes meteorológicos,
+  // necesitará saber la altitud en la que se toman sus medidas.
+  // Estamos usando una constante llamada ALTITUD en este sketch:
   
   Serial.println();
-  Serial.print("provided altitude: ");
+  Serial.print("Altitud proveida: ");
   Serial.print(ALTITUDE,0);
-  Serial.print(" meters, ");
+  Serial.print(" metros, ");
   Serial.print(ALTITUDE*3.28084,0);
-  Serial.println(" feet");
-  
-  // If you want to measure altitude, and not pressure, you will instead need
-  // to provide a known baseline pressure. This is shown at the end of the sketch.
+  Serial.println(" pies");
 
-  // You must first get a temperature measurement to perform a pressure reading.
-  
-  // Start a temperature measurement:
-  // If request is successful, the number of ms to wait is returned.
-  // If request is unsuccessful, 0 is returned.
+  // Para mejorar la lectura de presión, primero se debe obtener una medida de temperatura.
+  // Iniciar una medición de temperatura:
+  // Si la solicitud es satisfactoria, se devuelve el número de ms (milisegundos) a esperar.
+  // Si la solicitud no tiene éxito, se devuelve 0.
 
   status = pressure.startTemperature();
   if (status != 0)
   {
-    // Wait for the measurement to complete:
+    // Esperamos para completar la medida de temperatura
     delay(status);
 
     // Retrieve the completed temperature measurement:
-    // Note that the measurement is stored in the variable T.
-    // Function returns 1 if successful, 0 if failure.
-
+    // La medida de temperatura es almacenada en la variable T.
+    // La función retorna 1 si fue exitosa o 0 si falló.
     status = pressure.getTemperature(T);
     if (status != 0)
     {
-      // Print out the measurement:
-      Serial.print("temperature: ");
+      Serial.print("Temperatura: ");
       Serial.print(T,2);
-      Serial.print(" deg C, ");
-      Serial.print((9.0/5.0)*T+32.0,2);
-      Serial.println(" deg F");
+      Serial.print(" °C, ");
       
-      // Start a pressure measurement:
-      // The parameter is the oversampling setting, from 0 to 3 (highest res, longest wait).
-      // If request is successful, the number of ms to wait is returned.
-      // If request is unsuccessful, 0 is returned.
+      // Iniciamos medición de presión:
+      // El parámetro es el ajuste de sobremuestreo, de 0 a 3 (más alto, más largo).
+      // Si la solicitud es satisfactoria, se devuelve el número de ms (milisegundos) a esperar.
+      // Si la solicitud no tiene éxito, se devuelve 0.
 
       status = pressure.startPressure(3);
       if (status != 0)
       {
-        // Wait for the measurement to complete:
+        // Esperamos para completar la medida de presión:
         delay(status);
 
-        // Retrieve the completed pressure measurement:
-        // Note that the measurement is stored in the variable P.
-        // Note also that the function requires the previous temperature measurement (T).
-        // (If temperature is stable, you can do one temperature measurement for a number of pressure measurements.)
-        // Function returns 1 if successful, 0 if failure.
-
+        // Obtenemos la medición de presión completada:
+        // Observe que la medición se almacena en la variable P.
+        // Observe también que la función requiere la medición de temperatura anterior (T).
+        // (Si la temperatura es estable, puede realizar una medición de temperatura para una serie de mediciones de presión.)
+        // Función devuelve 1 si tiene éxito, 0 si falla.
         status = pressure.getPressure(P,T);
         if (status != 0)
         {
-          // Print out the measurement:
-          Serial.print("absolute pressure: ");
+          Serial.print("Presión Absoluta: ");
           Serial.print(P,2);
-          Serial.print(" mb, ");
+          Serial.print(" mb (milibares), ");
           Serial.print(P*0.0295333727,2);
-          Serial.println(" inHg");
+          Serial.println(" inHg (pulgadas de Mercurio)");
 
-          // The pressure sensor returns abolute pressure, which varies with altitude.
-          // To remove the effects of altitude, use the sealevel function and your current altitude.
-          // This number is commonly used in weather reports.
-          // Parameters: P = absolute pressure in mb, ALTITUDE = current altitude in m.
-          // Result: p0 = sea-level compensated pressure in mb
+          // El sensor de presión devuelve una presión absoluta, que varía con la altitud.
+          // Para eliminar los efectos de la altitud, utilice la función de nivel de mar y su altitud actual.
+          // Este número se utiliza comúnmente en los informes meteorológicos.
+          // Parámetros: P = presión absoluta en mb (milibares), ALTITUD = altitud actual en m (metros).
+          // Resultado: p0 = presión compensada en el nivel del mar en mb (milibares)
 
-          p0 = pressure.sealevel(P,ALTITUDE); // we're at 1655 meters (Boulder, CO)
-          Serial.print("relative (sea-level) pressure: ");
+          p0 = pressure.sealevel(P,ALTITUDE);
+          Serial.print("Presión relativa a nivel del mar: ");
           Serial.print(p0,2);
-          Serial.print(" mb, ");
+          Serial.print(" mb (milibares), ");
           Serial.print(p0*0.0295333727,2);
-          Serial.println(" inHg");
+          Serial.println(" inHg (pulgadas de Mercurio)");
 
-          // On the other hand, if you want to determine your altitude from the pressure reading,
-          // use the altitude function along with a baseline pressure (sea-level or other).
-          // Parameters: P = absolute pressure in mb, p0 = baseline pressure in mb.
-          // Result: a = altitude in m.
+          // Por otro lado, si se quiere determinar la altitud a través de la lectura de presión
+          // usar la función de altitud a través de una presión base (por ejemplo nivel del mar).
+          // Parametros: P = presión absoluta en mb (milibares), p0 = presión base en mb (milibares).
+          // Resultado: a = altitud en metros.
 
           a = pressure.altitude(P,p0);
-          Serial.print("computed altitude: ");
+          Serial.print("Altitud determinada: ");
           Serial.print(a,0);
-          Serial.print(" meters, ");
-          Serial.print(a*3.28084,0);
-          Serial.println(" feet");
-        }
-        else Serial.println("error retrieving pressure measurement\n");
-      }
-      else Serial.println("error starting pressure measurement\n");
-    }
-    else Serial.println("error retrieving temperature measurement\n");
-  }
-  else Serial.println("error starting temperature measurement\n");
+          Serial.print(" metros, ");
+          
+          //TODO: Definir rango de valores limites para manejar activadores
+          //Si altura es mayor a tantos metros dar mas oxigeno prendiendo ventilación sino apagar ventilacion
 
-  delay(5000);  // Pause for 5 seconds.
+          //Si presion es mayor a tantos milibares prender ventilación para enfriar ambiente disminuyendo presión, si es menor a un determinado nivel prender LED
+          
+        }
+        else Serial.println("Error obteniendo medida de presión\n");
+      }
+      else Serial.println("Error iniciando medida de presión\n");
+    }
+    else Serial.println("Error obteniendo medida de temperatura\n");
+  }
+  else Serial.println("Error iniciando medida de temperatura\n");
   /*Fin funcionalidad BMP180*/
 
   /*Funcionalidad BH1750*/
   uint16_t lux = lightMeter.readLightLevel();
-  Serial.print("Light: ");
+  Serial.print("Luz: ");
   Serial.print(lux);
   Serial.println(" lx");
-  delay(1000);
+
+  //TODO: Definir rango de valores limites para manejar actuadores
+  if(lux == 0){
+    //Encendemos LED, habría que verificar que ya no se encuentren encendidos por tema de calentar ambiente.
+  }else{
+    //Si hay luz y los LED están prendidos se deberían apagar para ahorrar energía. Para este caso se debería considerar la temperatura en el ambiente.  
+  }
   /*Fin funcionalidad BH1750*/
-  
+
+  delay(30000); //Esperamos 30 segundos para realizar el próximo ciclo
 }
