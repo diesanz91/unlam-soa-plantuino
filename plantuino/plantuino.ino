@@ -1,3 +1,15 @@
+//Declaracion de variables globales
+const byte numChars = 19;
+char receivedChars[numChars]; //Este array almacena los datos recibidos
+boolean newData = false;
+char command;
+char limLuzChar[6];
+char limTempChar[6];
+char limHumChar[6];
+float limLuz;
+float limTemp;
+float limHum;
+
 //*** Sensor de temperatura y humedad - DHT AM2302 ***//
 #include "DHT.h"
 #define DHTPIN 2                // Definimos PIN al que nos vamos a conectar
@@ -52,6 +64,8 @@ void setup() {
 
 void loop() {
 
+  //recvWithEndMarker();
+  //showNewData();
   loop_bluetooth();             //Lee si se reciben datos de bluetooth desde la App
   
   delay(100);
@@ -84,11 +98,38 @@ void loop() {
 
 }
 
-// Función para cambiar de estado un pin
-void toggle(int pinNum)
-{
-  pinEstadoApp = !pinEstadoApp;
-  digitalWrite(pinNum, pinEstadoApp);
+void recvWithEndMarker(){
+  static byte ndx = 0;
+  char endMarker = '\n';
+  char rc;
+    //http://forum.arduino.cc/index.php?topic=288234.0
+    while(BT.available() > 0 && newData == false){
+      rc = BT.read();
+      BT.flush();
+      if(rc != endMarker){
+        receivedChars[ndx] = rc;
+        ndx++;
+        if(ndx >= numChars){
+          ndx = numChars - 1;
+          }
+        }
+        else {
+          receivedChars[ndx] = '\0'; //Ya leimos todos los datos recibidos
+          ndx = 0;
+          newData = true;
+          }
+      }     
+      
+}
+
+void showNewData(){
+  
+  if(newData == true){    
+    Serial.print("Datos recibidos ... ");
+    Serial.println(receivedChars);
+    newData = false;  
+  }
+    
 }
 
 // Función para leer indicaciones desde Aplicacion Android
@@ -101,28 +142,59 @@ void loop_bluetooth()
     BT.flush();
     Serial.println(command);
 
-    //String parametros = String(command);
-
-    //String limLuz = getValue(command,'-', 1);
-    //Serial.print("Limite Luz: ");
-    //Serial.println(limLuz);
-
-    //String limTemp = getValue(command,'-', 2);
-    //Serial.print("Limite Temperatura: ");
-    //Serial.println(limTemp);
-
-    //String limHum = getValue(command,'-', 3);
-    //Serial.print("Limite Humedad: ");
-    //Serial.println(limHum);
-
-    //command = getValue(command,'-', 0);
-
+    //Obtengo primer paramero pasado que indica que el caso solicitado por la App
+    //command = receivedChars[0];
+    //Serial.print("Comando: ");
+    //Serial.println(command);
+    
     switch(command){            //Lee el comando recibido
-      //case 'P':
-        //Serial.println(limLuz);
-        //Serial.println(limTemp);
-        //Serial.println(limHum);
-        //break;
+      case 'P':
+
+        //Armo limite de luz
+        limLuzChar[0] = receivedChars[2];
+        limLuzChar[1] = receivedChars[3];
+        limLuzChar[2] = receivedChars[4];
+        limLuzChar[3] = receivedChars[5];
+        limLuzChar[4] = receivedChars[6];
+        limLuzChar[5] = '\0';
+        Serial.print("Lim Luz Char: ");
+        Serial.println(limLuzChar);
+
+        //Armo limite de temperatura
+        limTempChar[0] = receivedChars[8];
+        limTempChar[1] = receivedChars[9];
+        limTempChar[2] = receivedChars[10];
+        limTempChar[3] = receivedChars[11];
+        limTempChar[4] = receivedChars[12];
+        limTempChar[5] = '\0';      
+        Serial.print("Lim Temp Char: ");
+        Serial.println(limTempChar);
+
+        //Armo limite de humedad
+        limHumChar[0] = receivedChars[14];
+        limHumChar[1] = receivedChars[15];
+        limHumChar[2] = receivedChars[16];
+        limHumChar[3] = receivedChars[17];
+        limHumChar[4] = receivedChars[18];
+        limHumChar[5] = '\0';      
+        Serial.print("Lim Hum Char: ");
+        Serial.println(limHumChar);
+
+        //Obtengo valores flotantes de los limites armados
+        //http://forum.arduino.cc/index.php?topic=42139.0
+        limLuz = atof(limLuzChar);
+        Serial.print("Limite luz: ");
+        Serial.println(limLuz);
+        
+        limTemp = atof(limTempChar);
+        Serial.print("Limite temperatura: ");
+        Serial.println(limTemp);
+        
+        limHum = atof(limHumChar);        
+        Serial.print("Limite humedad: ");
+        Serial.println(limHum);
+        
+        break;
       case 'V':
         Serial.println("Encender Ventilacion");
         digitalWrite(FAN,HIGH);       
@@ -164,7 +236,7 @@ void loop_bluetooth()
         loop_temperature();
         loop_humidity();
         break;           
-    }
+    }  
   }
   
   /* 
@@ -216,4 +288,11 @@ void loop_humidity() {
   BT.print(h);
   BT.println(" %\t");
 
+}
+
+// Función para cambiar de estado un pin
+void toggle(int pinNum)
+{
+  pinEstadoApp = !pinEstadoApp;
+  digitalWrite(pinNum, pinEstadoApp);
 }
