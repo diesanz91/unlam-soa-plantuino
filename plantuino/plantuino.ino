@@ -9,6 +9,9 @@ char limHumChar[6];
 float limLuz;
 float limTemp;
 float limHum;
+int flagFAN = 0;
+int flagWAT = 0;
+int flagLED = 0;
 
 //*** Sensor de temperatura y humedad - DHT AM2302 ***//
 #include "DHT.h"
@@ -34,10 +37,13 @@ byte pinEstado = 0;             // Para ver si se activa un pin porque se detect
 byte pinEstadoApp = 0;          // Para ver si se activa un pin porque se dio la orden desde la App (todavia no se usa)
 
 //*** Definición de límites ***//
-#define limiteLuz 30            // Limite de luz, medido en lx
-#define limiteHumedad 50        // Limite de humedad, medido en %
-#define limiteTemperatura 25    // Limite de temperatura, medido en °C
+//#define limiteLuz 30            // Limite de luz, medido en lx
+//#define limiteHumedad 50        // Limite de humedad, medido en %
+//#define limiteTemperatura 25    // Limite de temperatura, medido en °C
 #define tiempo_lectura 5000     // Cada cuantos milisegundos lee los sensores para activar o no los pines
+float limiteLuz = 100.0;
+float limiteHumedad = 75.0;
+float limiteTemperatura = 30.0;
 int tiempo = tiempo_lectura;    // Para que lea los sensores cuando prende la placa
 
 void setup() {
@@ -65,7 +71,7 @@ void setup() {
 void loop() {
 
   //recvWithEndMarker();
-  //showNewData();
+  showNewData();
   loop_bluetooth();             //Lee si se reciben datos de bluetooth desde la App
   
   delay(100);
@@ -90,9 +96,27 @@ void loop() {
     Serial.println(" C\t");
    
     //Activa o desactiva pines (prende o apaga actuadores) de acuerdo a los limites establecidos
-    digitalWrite(LED, (lux<limiteLuz));
-    digitalWrite(WAT, (h<limiteHumedad));
-    digitalWrite(FAN, (t>limiteTemperatura));
+    if(flagLED == 0) {
+      if(lux< (int)limiteLuz)
+        digitalWrite(LED,HIGH);
+      else
+        digitalWrite(LED,LOW);
+    }
+
+    if(flagWAT == 0) {
+      if(h<limiteHumedad)
+        digitalWrite(WAT,HIGH);
+      else
+        digitalWrite(WAT,LOW);
+    }
+
+    if(flagFAN == 0) {
+      if(h<limiteTemperatura)
+        digitalWrite(FAN,HIGH);
+      else
+        digitalWrite(FAN,LOW);
+    }
+    
 
   }
 
@@ -135,17 +159,20 @@ void showNewData(){
 // Función para leer indicaciones desde Aplicacion Android
 void loop_bluetooth()
 {
-
   if(BT.available())            // Verifica si se recibieron datos de bluetooth
   {
-    char command = BT.read();
-    BT.flush();
-    Serial.println(command);
+    for(int i=0; i < 19; i++){
+      receivedChars[i] = '\0';
+    }
+    recvWithEndMarker();
+    //char command = BT.read();
+    //BT.flush();
+    //Serial.println("Contenido de ReceivedChars: ", receivedChars);
 
     //Obtengo primer paramero pasado que indica que el caso solicitado por la App
-    //command = receivedChars[0];
-    //Serial.print("Comando: ");
-    //Serial.println(command);
+    command = receivedChars[0];
+    Serial.print("Comando: ");
+    Serial.println(command);
     
     switch(command){            //Lee el comando recibido
       case 'P':
@@ -197,26 +224,34 @@ void loop_bluetooth()
         break;
       case 'V':
         Serial.println("Encender Ventilacion");
+        flagFAN = 1;
         digitalWrite(FAN,HIGH);       
         break;
       case 'v':
         Serial.println("Apagar Ventilacion");
+        flagFAN = 0;
         digitalWrite(FAN,LOW);
         break;
       case 'I':
         Serial.println("Encender iluminacion");
-        toggle(LED);            //Enienda/Apaga LED
+        //toggle(LED);            //Enienda/Apaga LED
+        flagLED = 1;
+        digitalWrite(LED,HIGH);
         break;
       case 'i':
         Serial.println("Apagar iluminacion");
-        toggle(LED);            //Enienda/Apaga LED
+        //toggle(LED);            //Enienda/Apaga LED
+        flagLED = 0;
+        digitalWrite(LED,LOW);
         break;
       case 'B':
         Serial.println("Encender bomba de agua");
+        flagWAT = 1;          
         digitalWrite(WAT,HIGH);
         break;
       case 'b':
         Serial.println("Apagar bomba de agua");
+        flagWAT = 0;
         digitalWrite(WAT,LOW);
         break;
       case 'L':
@@ -232,10 +267,14 @@ void loop_bluetooth()
         toggle(LED);            //Enienda/Apaga LED
         break;           
       case 'A':                 //Lee todos los sensores y envia datos por bluetooth a la App
+        Serial.println("Entro a A!");
         loop_light();
         loop_temperature();
         loop_humidity();
-        break;           
+        break;
+       default:
+        Serial.println("Se rompio todo!");        
+        break;
     }  
   }
   
