@@ -6,9 +6,6 @@ char command;
 char limLuzChar[6];
 char limTempChar[6];
 char limHumChar[6];
-float limLuz;
-float limTemp;
-float limHum;
 int flagFAN = 0;
 int flagWAT = 0;
 int flagLED = 0;
@@ -40,11 +37,13 @@ byte pinEstadoApp = 0;          // Para ver si se activa un pin porque se dio la
 //#define limiteLuz 30            // Limite de luz, medido en lx
 //#define limiteHumedad 50        // Limite de humedad, medido en %
 //#define limiteTemperatura 25    // Limite de temperatura, medido en °C
-#define tiempo_lectura 5000     // Cada cuantos milisegundos lee los sensores para activar o no los pines
-float limiteLuz = 100.0;
-float limiteHumedad = 75.0;
-float limiteTemperatura = 30.0;
+#define tiempo_lectura 5000       // Cada cuantos milisegundos lee todos los sensores (5 s = 5000 ms)
+#define tiempo_humedad 30000//3600000    // Cada cuantos milisegundos comprueba si la humedad es baja (1 h = 3600000 ms)
+float limiteLuz = 750;
+float limiteHumedad = 65;
+float limiteTemperatura = 28;
 int tiempo = tiempo_lectura;    // Para que lea los sensores cuando prende la placa
+int tiempH = tiempo_humedad;    // Para que lea los sensores cuando prende la placa
 
 void setup() {
   
@@ -76,6 +75,7 @@ void loop() {
   
   delay(100);
   tiempo += 100;                //Contador de tiempo, porque la frecuencia de letura de bluetooth es mayor que la frecuencia de lectura de los sensores
+  tiempH += 100;
 
   if (tiempo > tiempo_lectura){ //Lee los sensores cuando se cumple el tiempo seteado
  
@@ -96,27 +96,34 @@ void loop() {
     Serial.println(" C\t");
    
     //Activa o desactiva pines (prende o apaga actuadores) de acuerdo a los limites establecidos
+
     if(flagLED == 0) {
-      if(lux< (int)limiteLuz)
+      if(lux<(int)limiteLuz)
         digitalWrite(LED,HIGH);
       else
         digitalWrite(LED,LOW);
     }
 
-    if(flagWAT == 0) {
-      if(h<limiteHumedad)
-        digitalWrite(WAT,HIGH);
-      else
-        digitalWrite(WAT,LOW);
-    }
-
     if(flagFAN == 0) {
-      if(h<limiteTemperatura)
+      if(t>limiteTemperatura)
         digitalWrite(FAN,HIGH);
       else
         digitalWrite(FAN,LOW);
     }
     
+    if(flagWAT == 0) {
+      if(tiempH>=tiempo_humedad){
+        tiempH = 0;
+        if(h<limiteHumedad)
+        {
+          digitalWrite(WAT,HIGH);
+          delay(2000); // 2 seg con la bomba activa
+          digitalWrite(WAT,LOW);
+        }
+        else
+          digitalWrite(WAT,LOW);
+      }
+    }
 
   }
 
@@ -209,17 +216,17 @@ void loop_bluetooth()
 
         //Obtengo valores flotantes de los limites armados
         //http://forum.arduino.cc/index.php?topic=42139.0
-        limLuz = atof(limLuzChar);
+        limiteLuz = atof(limLuzChar);
         Serial.print("Limite luz: ");
-        Serial.println(limLuz);
+        Serial.println(limiteLuz);
         
-        limTemp = atof(limTempChar);
+        limiteTemperatura = atof(limTempChar);
         Serial.print("Limite temperatura: ");
-        Serial.println(limTemp);
+        Serial.println(limiteTemperatura);
         
-        limHum = atof(limHumChar);        
+        limiteHumedad = atof(limHumChar);        
         Serial.print("Limite humedad: ");
-        Serial.println(limHum);
+        Serial.println(limiteHumedad);
         
         break;
       case 'V':
