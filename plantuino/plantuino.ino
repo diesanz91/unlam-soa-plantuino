@@ -32,16 +32,18 @@ SoftwareSerial BT(10,11);       // Definimos los pines RX y TX del Arduino conec
 
 byte pinEstado = 0;             // Para ver si se activa un pin porque se detecta una medida limite (todavia no se usa)
 byte pinEstadoApp = 0;          // Para ver si se activa un pin porque se dio la orden desde la App (todavia no se usa)
+byte sensarLuz = 1;             // Para ver si usa el sensor de luz de arduino o no
 
 //*** Definición de límites ***//
-//#define limiteLuz 30            // Limite de luz, medido en lx
-//#define limiteHumedad 50        // Limite de humedad, medido en %
+//#define limiteLuz 300            // Limite de luz, medido en lx
+//#define limiteHumedad 65        // Limite de humedad, medido en %
 //#define limiteTemperatura 25    // Limite de temperatura, medido en °C
 #define tiempo_lectura 5000       // Cada cuantos milisegundos lee todos los sensores (5 s = 5000 ms)
 #define tiempo_humedad 30000//3600000    // Cada cuantos milisegundos comprueba si la humedad es baja (1 h = 3600000 ms)
-float limiteLuz = 750;
+float limiteLuz = 300;
+float limiteTemperatura = 25;
 float limiteHumedad = 65;
-float limiteTemperatura = 28;
+
 int tiempo = tiempo_lectura;    // Para que lea los sensores cuando prende la placa
 int tiempH = tiempo_humedad;    // Para que lea los sensores cuando prende la placa
 
@@ -82,22 +84,22 @@ void loop() {
     tiempo = 0;                 //Reinicia el tiempo
 
     uint16_t lux = lightMeter.readLightLevel(); //Lee sensor luz
-    float h = dht.readHumidity();               //Lee sensor humedad
     float t = dht.readTemperature();            //Lee sensor temperatura
+    float h = dht.readHumidity();               //Lee sensor humedad
     
     Serial.print("Luz: ");
     Serial.print(lux);
     Serial.print(" lx\t");
-    Serial.print("Humedad: ");
-    Serial.print(h);
-    Serial.print(" %\t");
     Serial.print("Temperatura: ");
     Serial.print(t);
-    Serial.println(" C\t");
-   
+    Serial.print(" C\t");
+    Serial.print("Humedad: ");
+    Serial.print(h);
+    Serial.println(" %\t");
+       
     //Activa o desactiva pines (prende o apaga actuadores) de acuerdo a los limites establecidos
 
-    if(flagLED == 0) {
+    if(flagLED == 0 && sensarLuz) {
       if(lux<(int)limiteLuz)
         digitalWrite(LED,HIGH);
       else
@@ -272,12 +274,35 @@ void loop_bluetooth()
         break;
       case 'O':
         toggle(LED);            //Enienda/Apaga LED
+        break;
+      case 'M':
+        sensarLuz = 0;
+        break;
+      case 'm':
+        sensarLuz = 1;
+        break;
+      case 'Z':
+        if(!sensarLuz)digitalWrite(LED,HIGH); 
         break;           
+      case 'z':
+        if(!sensarLuz)digitalWrite(LED,LOW);
+        break;
+      case 'S':
+        Serial.print("S");
+        Serial.print(limiteLuz);
+        Serial.print("|");
+        Serial.print(limiteTemperatura);
+        Serial.print("|");
+        Serial.println(limiteHumedad);
+        break;
       case 'A':                 //Lee todos los sensores y envia datos por bluetooth a la App
         Serial.println("Entro a A!");
+        /*
         loop_light();
         loop_temperature();
         loop_humidity();
+        */
+        loop_all();
         break;
        default:
         Serial.println("Se rompio todo!");        
@@ -322,7 +347,7 @@ void loop_temperature() {
 
 void loop_humidity() {
   
-  float h = dht.readHumidity();                 //Leemos humedad
+  float h = dht.readHumidity();                 // Leemos humedad
 
   // Chequeamos si falló al leer sensor y salimos para intentar nuevamente
   if (isnan(h)) {
@@ -332,8 +357,37 @@ void loop_humidity() {
 
   BT.print("Humidity sensor: "); 
   BT.print(h);
-  BT.println(" %\t");
+  BT.println(" %");
 
+}
+
+void loop_all(){
+  uint16_t lux = lightMeter.readLightLevel();   // Leemos nivel de luz
+  float t = dht.readTemperature();              // Leemos temperatura
+  float h = dht.readHumidity();                 // Leemos humedad
+
+  // Chequeamos si falló al leer sensor y salimos para intentar nuevamente
+  if (isnan(t)) {
+    Serial.println("Falló al leer desde sensor DHT!");
+    return;
+  }
+
+  // Chequeamos si falló al leer sensor y salimos para intentar nuevamente
+  if (isnan(h)) {
+    Serial.println("Falló al leer desde sensor DHT!");
+    return;
+  }
+
+  BT.print("Light Sensor: ");
+  BT.print(lux);
+  BT.print(" lx|");
+  BT.print("Temperature Sensor: "); 
+  BT.print(t);
+  BT.print(" °C|");
+  BT.print("Humidity sensor: "); 
+  BT.print(h);
+  BT.println(" %|");
+    
 }
 
 // Función para cambiar de estado un pin
